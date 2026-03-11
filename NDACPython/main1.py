@@ -66,6 +66,7 @@ class OnlineSLDSModel(SLDS):
         self._optimization_finished = False
         self.loop = None
         self.thread = None
+        
 
         super().__init__(N, K=K, D=D, M=M,
                             transitions=transitions,
@@ -78,9 +79,11 @@ class OnlineSLDSModel(SLDS):
         self.As = self.dynamics.As
         self.Bs = self.dynamics.Vs
         self.bs = self.dynamics.bs
+        
         self.Cs = self.emissions.Cs
         self.Ds = self.emissions.Fs
         self.ds = self.emissions.ds
+        self.t = 0
 
         self.pi0 = self.init_state_distn.initial_state_distn
         self.x_variance = x_variance
@@ -106,6 +109,13 @@ class OnlineSLDSModel(SLDS):
         
     def sample(self, u):
         # Convert the input into a numpy array
+        if self.t < 300:
+            self.dynamics.bs = -4*np.ones_like(self.dynamics.bs)
+        elif self.t < 600:
+            self.dynamics.bs = 4*np.ones_like(self.dynamics.bs)
+        else:
+            self.dynamics.bs = 2*np.ones_like(self.dynamics.bs)
+        #self.dynamics.bs = np.sin(5*np.pi*self.t)*np.ones_like(self.dynamics.bs)
         u = [point for point in u]
         u = np.asarray(u)
         u = u[None,:]
@@ -135,7 +145,9 @@ class OnlineSLDSModel(SLDS):
         self.x = self.dynamics.sample_x(z[0], x[None,:], input=u[-1], tag=tag, with_noise=self.with_noise)
         # Sample emissions from latent states
         self.y = self.emissions.sample(z, self.x[None,:], input=u[-1,None], tag=tag)[0].astype(np.float64)
-        
+        self.t += 1
+        return self.dynamics.bs
+
     def initialize(self):
         self.zhat = 0
         
